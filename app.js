@@ -114,7 +114,7 @@ api.post('/attendance', async (req, res) => {
 
 api.patch('/attendance', async (req, res) => {
   try {
-    const { id, checkInTime, checkOutTime, notes } = req.body;
+    const { id, checkInTime, checkOutTime, notes, isManual } = req.body;
     if (!id) {
       return res.status(400).json({ error: 'Missing id' });
     }
@@ -130,13 +130,14 @@ api.patch('/attendance', async (req, res) => {
     const checkOut = co ? new Date(`${date}T${co}`) : null;
     const totalWorkedMinutes = checkOut ? Math.max(0, Math.floor((checkOut.getTime() - checkIn.getTime()) / 60000)) : 0;
     const status = checkOut ? 'manual' : 'incomplete';
+    const manualFlag = typeof isManual === 'boolean' ? isManual : c.isManual;
     await mongo.mongoUpdateAttendance(id, {
       checkInTime: ci,
       checkOutTime: co,
       notes: notes ?? c.notes,
       totalWorkedMinutes,
       status,
-      isManual: true,
+      isManual: manualFlag,
     });
     const updated = await mongo.mongoFindAttendanceById(id);
     return res.json(updated ?? null);
