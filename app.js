@@ -73,8 +73,8 @@ api.get('/attendance', async (req, res) => {
       return res.status(400).json({ error: 'Missing userId' });
     }
     if (date) {
-      const one = await mongo.mongoGetAttendanceByUserAndDate(userId, date);
-      return res.json(one ?? null);
+      const list = await mongo.mongoGetAttendancesByUserAndDate(userId, date);
+      return res.json(list);
     }
     const list = await mongo.mongoGetAttendanceByUser(userId);
     return res.json(list);
@@ -89,10 +89,6 @@ api.post('/attendance', async (req, res) => {
     const { userId, date, checkInTime, checkOutTime, notes, isManual = false } = req.body;
     if (!userId || !date || !checkInTime) {
       return res.status(400).json({ error: 'Missing userId, date, or checkInTime' });
-    }
-    const existing = await mongo.mongoGetAttendanceByUserAndDate(userId, date);
-    if (existing) {
-      return res.status(409).json({ error: 'Attendance already exists for this date' });
     }
     const checkIn = new Date(`${date}T${checkInTime}`);
     const checkOut = checkOutTime ? new Date(`${date}T${checkOutTime}`) : null;
