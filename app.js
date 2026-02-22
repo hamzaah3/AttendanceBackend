@@ -1,6 +1,6 @@
 /**
  * Express backend for Attendance App.
- * Routes: /api/users, /api/attendance, /api/holidays, /api/commitment
+ * Routes mounted at /api/* and also at /* so Vercel path handling works either way.
  * Load .env from file in development; on Vercel use dashboard env.
  */
 require('dotenv').config();
@@ -21,8 +21,15 @@ function getUserId(req) {
   return req.headers['x-user-id'] || req.headers['x-firebase-uid'] || null;
 }
 
-// --- /api/users ---
-app.get('/api/users', async (req, res) => {
+// API router: routes without /api prefix so we can mount at '' and '/api'
+const api = express.Router();
+
+api.get('/health', (req, res) => {
+  res.json({ ok: true });
+});
+
+// --- users ---
+api.get('/users', async (req, res) => {
   try {
     const firebaseUid = req.query.firebaseUid || getUserId(req);
     if (!firebaseUid) {
@@ -36,7 +43,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.post('/api/users', async (req, res) => {
+api.post('/users', async (req, res) => {
   try {
     const { firebaseUid, name, email, committedHoursPerDay = 8, weeklyOffDays = ['Saturday', 'Sunday'], timezone } = req.body;
     if (!firebaseUid || !email) {
@@ -57,8 +64,8 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// --- /api/attendance ---
-app.get('/api/attendance', async (req, res) => {
+// --- attendance ---
+api.get('/attendance', async (req, res) => {
   try {
     const userId = req.query.userId || getUserId(req);
     const date = req.query.date;
@@ -77,7 +84,7 @@ app.get('/api/attendance', async (req, res) => {
   }
 });
 
-app.post('/api/attendance', async (req, res) => {
+api.post('/attendance', async (req, res) => {
   try {
     const { userId, date, checkInTime, checkOutTime, notes, isManual = false } = req.body;
     if (!userId || !date || !checkInTime) {
@@ -109,7 +116,7 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
-app.patch('/api/attendance', async (req, res) => {
+api.patch('/attendance', async (req, res) => {
   try {
     const { id, checkInTime, checkOutTime, notes } = req.body;
     if (!id) {
@@ -143,7 +150,7 @@ app.patch('/api/attendance', async (req, res) => {
   }
 });
 
-app.delete('/api/attendance', async (req, res) => {
+api.delete('/attendance', async (req, res) => {
   try {
     const id = req.query.id;
     if (!id) {
@@ -157,8 +164,8 @@ app.delete('/api/attendance', async (req, res) => {
   }
 });
 
-// --- /api/holidays ---
-app.get('/api/holidays', async (req, res) => {
+// --- holidays ---
+api.get('/holidays', async (req, res) => {
   try {
     const userId = req.query.userId || getUserId(req);
     if (!userId) {
@@ -172,7 +179,7 @@ app.get('/api/holidays', async (req, res) => {
   }
 });
 
-app.post('/api/holidays', async (req, res) => {
+api.post('/holidays', async (req, res) => {
   try {
     const { userId, date, title } = req.body;
     if (!userId || !date || !title) {
@@ -186,7 +193,7 @@ app.post('/api/holidays', async (req, res) => {
   }
 });
 
-app.delete('/api/holidays', async (req, res) => {
+api.delete('/holidays', async (req, res) => {
   try {
     const id = req.query.id;
     if (!id) {
@@ -200,8 +207,8 @@ app.delete('/api/holidays', async (req, res) => {
   }
 });
 
-// --- /api/commitment ---
-app.get('/api/commitment', async (req, res) => {
+// --- commitment ---
+api.get('/commitment', async (req, res) => {
   try {
     const userId = req.query.userId || getUserId(req);
     if (!userId) {
@@ -215,7 +222,7 @@ app.get('/api/commitment', async (req, res) => {
   }
 });
 
-app.post('/api/commitment', async (req, res) => {
+api.post('/commitment', async (req, res) => {
   try {
     const { userId, hoursPerDay, effectiveFromDate } = req.body;
     if (!userId || hoursPerDay == null || !effectiveFromDate) {
@@ -233,9 +240,15 @@ app.post('/api/commitment', async (req, res) => {
   }
 });
 
-// Health check (optional, for Vercel)
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true });
+// Root
+app.get('/', (req, res) => {
+  res.json({ message: 'Attendance API', health: '/api/health' });
 });
+
+// Mount API at /api (app calls https://origin/api/users etc.)
+app.use('/api', api);
+
+// Mount same API at root (Vercel may forward path as /users instead of /api/users)
+app.use(api);
 
 module.exports = app;
