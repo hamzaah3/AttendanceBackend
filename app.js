@@ -45,18 +45,22 @@ api.get('/users', async (req, res) => {
 
 api.post('/users', async (req, res) => {
   try {
-    const { firebaseUid, name, email, committedHoursPerDay = 8, weeklyOffDays = ['Saturday', 'Sunday'], timezone } = req.body;
+    const { firebaseUid, name, email, committedHoursPerDay = 8, weeklyOffDays = ['Saturday', 'Sunday'], timezone, monthlySalary } = req.body;
     if (!firebaseUid || !email) {
       return res.status(400).json({ error: 'Missing firebaseUid or email' });
     }
-    const user = await mongo.mongoCreateOrUpdateUser({
+    const doc = {
       firebaseUid,
       name: name ?? email.split('@')[0],
       email,
       committedHoursPerDay: Number(committedHoursPerDay) || 8,
       weeklyOffDays: Array.isArray(weeklyOffDays) ? weeklyOffDays : ['Saturday', 'Sunday'],
       timezone: timezone ?? 'UTC',
-    });
+    };
+    if (monthlySalary != null && monthlySalary !== '') {
+      doc.monthlySalary = Number(monthlySalary) || 0;
+    }
+    const user = await mongo.mongoCreateOrUpdateUser(doc);
     return res.json(user);
   } catch (e) {
     console.error(e);
